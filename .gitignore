@@ -1,14 +1,19 @@
-# Este repositorio es solo codigo, documentacion y logs. Todo lo demas se deja
-# fuera a proposito (ver README.md): pesa mucho o no es nuestro para
-# redistribuirlo. GitHub rechaza archivos de mas de 100 MB.
+# Solo se versionan LineVul-main/, AMPLE-main/ y los documentos de la raiz.
+# Todo lo demas de esta carpeta (otros modelos, datasets, entornos virtuales,
+# el clon de dgl, zips, configuracion local) queda fuera.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/THIRD_PARTY_NOTICES.md
+!/PROGRESS.md
+!/LineVul-main/
+!/AMPLE-main/
+!/patches/
+!/environment/
 
-# Entornos virtuales y compilaciones
-.venv*/
-venv/
-dgl_build_experimental/
-build/
-
-# Cachés y compilados de Python / sistema
+# Dentro de LineVul-main/ y AMPLE-main/: nada pesado ni regenerable.
+# GitHub rechaza archivos de mas de 100 MB; esto es solo codigo, docs y logs.
 __pycache__/
 *.pyc
 .DS_Store
@@ -17,10 +22,10 @@ __pycache__/
 # Datasets y datos generados
 *.csv
 /LineVul-main/data/
+/LineVul-main/cppcheck/data/
 /AMPLE-main/devign_dataset*/
 /AMPLE-main/attention_weight/
 /AMPLE-main/tmp/
-shared_datasets/
 
 # Pesos de modelos, checkpoints, binarios y comprimidos
 *.bin
@@ -32,5 +37,11 @@ shared_datasets/
 *.tar
 *.tar.gz
 /LineVul-main/linevul/saved_models/
+/LineVul-main/linevul/bpe_tokenizer/
+/LineVul-main/linevul/word_level_tokenizer/
 /AMPLE-main/word2vec_model/
 /AMPLE-main/joern_bin/
+
+# PDFs ajenos (presentaciones, papers); se deja pasar la curva de resultados propia
+*.pdf
+!/LineVul-main/linevul/test_precision_recall_12heads_linevul_model.bin.pdf
