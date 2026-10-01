@@ -1,0 +1,36 @@
+# Este repositorio es solo codigo, documentacion y logs. Todo lo demas se deja
+# fuera a proposito (ver README.md): pesa mucho o no es nuestro para
+# redistribuirlo. GitHub rechaza archivos de mas de 100 MB.
+
+# Entornos virtuales y compilaciones
+.venv*/
+venv/
+dgl_build_experimental/
+build/
+
+# Cachés y compilados de Python / sistema
+__pycache__/
+*.pyc
+.DS_Store
+.hf_cache/
+
+# Datasets y datos generados
+*.csv
+/LineVul-main/data/
+/AMPLE-main/devign_dataset*/
+/AMPLE-main/attention_weight/
+/AMPLE-main/tmp/
+shared_datasets/
+
+# Pesos de modelos, checkpoints, binarios y comprimidos
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.zip
+*.tar
+*.tar.gz
+/LineVul-main/linevul/saved_models/
+/AMPLE-main/word2vec_model/
+/AMPLE-main/joern_bin/

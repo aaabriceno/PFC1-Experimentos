@@ -1,0 +1,241 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ce6b348c..7ad45f1d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3,6 +3,28 @@ cmake_minimum_required(VERSION 3.18)
+ # Borrowed and adapted from TVM project
+ ########################################
+ project(dgl C CXX)
++
++# -------------------------------------------------------------------------
++# 🧩 Workaround for CMake >= 3.29 OpenMP_CUDA detection regression
++# -------------------------------------------------------------------------
++if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.29")
++    message(STATUS "Applying OpenMP_CUDA compatibility workaround for CMake ${CMAKE_VERSION}")
++
++    # Predefine all variables FindOpenMP.cmake looks for
++    set(OpenMP_CUDA_FOUND TRUE CACHE BOOL "")
++    set(OpenMP_CUDA_FLAGS "" CACHE STRING "")
++    set(OpenMP_CUDA_LIB_NAMES "omp" CACHE STRING "")
++    set(OpenMP_omp_LIBRARY "" CACHE STRING "")
++    set(OpenMP_FOUND TRUE CACHE BOOL "")
++
++    # Create dummy imported target if it doesn't exist
++    if(NOT TARGET OpenMP::OpenMP_CUDA)
++        add_library(OpenMP::OpenMP_CUDA INTERFACE IMPORTED)
++        target_compile_options(OpenMP::OpenMP_CUDA INTERFACE "")
++    endif()
++endif()
++
++
+ message(STATUS "Start configuring project ${PROJECT_NAME}")
+ 
+ set(CMAKE_CXX_STANDARD 17)
+@@ -334,40 +356,26 @@ if (USE_LIBXSMM)
+   message(STATUS "Build with LIBXSMM optimization.")
+ endif()
+ 
+-# To compile METIS correct for DGL.
+-add_compile_definitions(IDXTYPEWIDTH=64 REALTYPEWIDTH=32)
+-if (EXTERNAL_METIS_PATH)
+-  # To compile METIS correct for DGL.
+-  if(MSVC)
+-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /DIDXTYPEWIDTH=64 /DREALTYPEWIDTH=32")
+-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DIDXTYPEWIDTH=64 /DREALTYPEWIDTH=32")
+-  else(MSVC)
+-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIDXTYPEWIDTH=64 -DREALTYPEWIDTH=32")
+-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIDXTYPEWIDTH=64 -DREALTYPEWIDTH=32")
+-  endif(MSVC)
+-  find_package(METIS REQUIRED)
+-  message(STATUS "Found METIS library")
+-  target_include_directories(dgl SYSTEM PUBLIC ${METIS_INCLUDE_DIR})
+-  list(APPEND DGL_LINKER_LIBS ${METIS_LIBRARIES})
+-else(EXTERNAL_METIS_PATH)
+-  target_include_directories(dgl PRIVATE "third_party/METIS/include")
+-  # Compile METIS
+-  if(NOT MSVC)
+-    set(GKLIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party/GKlib")
+-    include(${GKLIB_PATH}/GKlibSystem.cmake)
+-    include_directories(${GKLIB_PATH})
+-    add_library(GKlib ${GKlib_sources})
+-    include_directories("third_party/METIS/include/")
+-    add_subdirectory("third_party/METIS/libmetis/")
+-    # When building on ubi7, it fails with the following error:
+-    # /usr/include/signal.h:156:29: error: unknown type name 'siginfo_t'.
+-    # So I(Rui) define _POSIX_C_SOURCE to 200809L for GKlib and metis to avoid the error.
+-    target_compile_definitions(GKlib PRIVATE _POSIX_C_SOURCE=200809L)
+-    target_compile_definitions(metis PRIVATE _POSIX_C_SOURCE=200809L)
+-    list(APPEND DGL_LINKER_LIBS metis GKlib)
+-  endif(NOT MSVC)
+-endif(EXTERNAL_METIS_PATH)
++# edited by jeetu 27022026
++
++if(USE_METIS)
++    message(STATUS "Using external METIS and GKlib")
++
++    find_library(GKLIB_LIBRARY GKlib HINTS /usr/local/lib /usr/lib)
++    find_path(GKLIB_INCLUDE_DIR GKlib.h HINTS /usr/local/include /usr/include)
+ 
++    find_library(METIS_LIBRARY metis HINTS /usr/local/lib /usr/lib)
++    find_path(METIS_INCLUDE_DIR metis.h HINTS /usr/local/include /usr/include)
++
++    if(NOT GKLIB_LIBRARY OR NOT METIS_LIBRARY)
++        message(FATAL_ERROR "METIS or GKlib not found")
++    endif()
++
++    target_include_directories(dgl PRIVATE ${GKLIB_INCLUDE_DIR} ${METIS_INCLUDE_DIR})
++
++    list(APPEND DGL_LINKER_LIBS ${METIS_LIBRARY})
++    list(APPEND DGL_LINKER_LIBS ${GKLIB_LIBRARY})
++endif()
+ 
+ # Avoid exposing third-party symbols when using DGL as a library.
+ if((NOT MSVC) AND (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
+@@ -375,18 +383,42 @@ if((NOT MSVC) AND (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--exclude-libs,ALL")
+ endif()
+ 
+-# Compile gpu_cache
++# edited by jeetu - 27022026
++
+ if(USE_CUDA)
+-  # Manually build gpu_cache because CMake always builds it as shared
++  # Fix: src/runtime/cuda/gpu_cache.cu (parte de DGL_SRC, se compila SIEMPRE,
++  # independiente de BUILD_HUGECTR) incluye nv_gpu_cache.hpp de este mismo
++  # directorio de terceros. El parche original solo agregaba este include
++  # dir cuando BUILD_HUGECTR=ON, asumiendo que ambos dependian del flag -
++  # pero BUILD_HUGECTR=OFF (usado aqui) solo debe saltear la compilacion del
++  # nv_gpu_cache.cu de terceros, no el include dir que dgl/gpu_cache.cu
++  # necesita siempre. Sin esto: "fatal error: nv_gpu_cache.hpp: No existe
++  # el archivo o el directorio" al compilar dgl_generated_gpu_cache.cu.o.
++  target_include_directories(dgl PRIVATE "third_party/HugeCTR/gpu_cache/include")
++endif()
++
++if(USE_CUDA AND BUILD_HUGECTR)
+   file(GLOB gpu_cache_src
+     third_party/HugeCTR/gpu_cache/src/nv_gpu_cache.cu
+   )
+   cuda_add_library(gpu_cache STATIC ${gpu_cache_src})
+   target_include_directories(gpu_cache PRIVATE "third_party/HugeCTR/gpu_cache/include")
+-  target_include_directories(dgl PRIVATE "third_party/HugeCTR/gpu_cache/include")
+   list(APPEND DGL_LINKER_LIBS gpu_cache)
+   message(STATUS "Build with HugeCTR GPU embedding cache.")
+-endif(USE_CUDA)
++endif()
++
++# Compile gpu_cache
++#if(USE_CUDA)
++#  # Manually build gpu_cache because CMake always builds it as shared
++#  file(GLOB gpu_cache_src
++#    third_party/HugeCTR/gpu_cache/src/nv_gpu_cache.cu
++#  )
++#  cuda_add_library(gpu_cache STATIC ${gpu_cache_src})
++#  target_include_directories(gpu_cache PRIVATE "third_party/HugeCTR/gpu_cache/include")
++#  target_include_directories(dgl PRIVATE "third_party/HugeCTR/gpu_cache/include")
++#  list(APPEND DGL_LINKER_LIBS gpu_cache)
++#  message(STATUS "Build with HugeCTR GPU embedding cache.")
++#endif(USE_CUDA)
+ 
+ # support PARALLEL_ALGORITHMS
+ if (LIBCXX_ENABLE_PARALLEL_ALGORITHMS)
+diff --git a/cmake/modules/CUDA.cmake b/cmake/modules/CUDA.cmake
+index 2028399f..a0fe81d0 100644
+--- a/cmake/modules/CUDA.cmake
++++ b/cmake/modules/CUDA.cmake
+@@ -1,3 +1,25 @@
++# -------------------------------------------------------------------------
++# 🧩 Workaround for CMake >= 3.29 OpenMP_CUDA detection regression
++# -------------------------------------------------------------------------
++if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.29")
++    message(STATUS "Applying OpenMP_CUDA compatibility workaround for CMake ${CMAKE_VERSION}")
++
++    # Predefine all variables FindOpenMP.cmake looks for
++    set(OpenMP_CUDA_FOUND TRUE CACHE BOOL "")
++    set(OpenMP_CUDA_FLAGS "" CACHE STRING "")
++    set(OpenMP_CUDA_LIB_NAMES "omp" CACHE STRING "")
++    set(OpenMP_omp_LIBRARY "" CACHE STRING "")
++    set(OpenMP_FOUND TRUE CACHE BOOL "")
++
++    # Create dummy imported target if it doesn't exist
++    if(NOT TARGET OpenMP::OpenMP_CUDA)
++        add_library(OpenMP::OpenMP_CUDA INTERFACE IMPORTED)
++        target_compile_options(OpenMP::OpenMP_CUDA INTERFACE "")
++    endif()
++endif()
++
++
++
+ # CUDA Module
+ if(USE_CUDA)
+   find_cuda(${USE_CUDA} REQUIRED)
+@@ -110,8 +132,16 @@ function(dgl_select_nvcc_arch_flags out_variable)
+     set(__archs_name_default "Auto")
+   endif()
+ 
++  # edited by jeetu - 27022026
++
+   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
+-  set(CUDA_ARCH_NAME ${__archs_name_default} CACHE STRING "Select target NVIDIA GPU achitecture.")
++  #set(CUDA_ARCH_NAME ${__archs_name_default} CACHE STRING "Select target NVIDIA GPU achitecture.")
++  
++  # FORCE manual architecture to avoid unsupported defaults
++  set(CUDA_ARCH_NAME "Manual" CACHE STRING "Select target NVIDIA GPU achitecture." FORCE)
++  set(CUDA_ARCH_BIN "120" CACHE STRING "Target GPU architectures" FORCE)
++  set(CUDA_ARCH_PTX "120" CACHE STRING "Target PTX architectures" FORCE)
++  
+   set_property( CACHE CUDA_ARCH_NAME PROPERTY STRINGS "" ${__archs_names} )
+   mark_as_advanced(CUDA_ARCH_NAME)
+ 
+diff --git a/graphbolt/CMakeLists.txt b/graphbolt/CMakeLists.txt
+index 8fdcbd50..7b50a593 100644
+--- a/graphbolt/CMakeLists.txt
++++ b/graphbolt/CMakeLists.txt
+@@ -64,7 +64,14 @@ if(USE_CUDA)
+   endif()
+   set(CMAKE_CUDA_ARCHITECTURES_FILTERED ${CMAKE_CUDA_ARCHITECTURES})
+   # CUDA extension supports only sm_70 and up (Volta+).
+-  list(FILTER CMAKE_CUDA_ARCHITECTURES_FILTERED EXCLUDE REGEX "[2-6][0-9]")
++  # Fix: el regex original "[2-6][0-9]" hace match parcial (no full-match) en
++  # CMake list(FILTER ... REGEX), asi que "120" (Blackwell, 3 digitos)
++  # matcheaba por la substring "20" y se filtraba igual que sm_20-sm_69,
++  # dejando la lista vacia y cayendo al fallback hardcoded "70" (Volta) que
++  # nvcc de CUDA 13.2 ya ni siquiera soporta (deprecado). Se ancla el regex
++  # a inicio/fin de string para que solo excluya arquitecturas reales de 2
++  # digitos en el rango 20-69, no substrings de arquitecturas de 3 digitos.
++  list(FILTER CMAKE_CUDA_ARCHITECTURES_FILTERED EXCLUDE REGEX "^[2-6][0-9]$")
+   list(LENGTH CMAKE_CUDA_ARCHITECTURES_FILTERED CMAKE_CUDA_ARCHITECTURES_FILTERED_LEN)
+   if(CMAKE_CUDA_ARCHITECTURES_FILTERED_LEN EQUAL 0)
+     # Build the CUDA extension at least build for Volta.
+diff --git a/graphbolt/build.sh b/graphbolt/build.sh
+index 7c71f755..21c17157 100755
+--- a/graphbolt/build.sh
++++ b/graphbolt/build.sh
+@@ -31,9 +31,18 @@ fi
+ CMAKE_FLAGS="-DCUDA_TOOLKIT_ROOT_DIR=$CUDA_TOOLKIT_ROOT_DIR -DUSE_CUDA=$USE_CUDA -DTORCH_CUDA_ARCH_LIST=$TORCH_CUDA_ARCH_LIST"
+ echo "graphbolt cmake flags: $CMAKE_FLAGS"
+ 
++# Fix: "make -j" sin numero usa todos los cores sin limite de RAM por job,
++# y este build.sh corre como script externo invocado por add_custom_target()
++# en el CMakeLists.txt padre - no hereda el -j del make de afuera (es un
++# proceso bash separado). En maquinas con RAM ajustada, varias unidades de
++# compilacion CUDA/CCCL pesadas en paralelo agotan la RAM y matan cc1plus a
++# mitad de compilacion. GRAPHBOLT_MAKE_JOBS permite acotar el paralelismo
++# desde afuera (default: todos los cores, comportamiento original).
++MAKE_JOBS="${GRAPHBOLT_MAKE_JOBS:-}"
++
+ if [ $# -eq 0 ]; then
+   $CMAKE_COMMAND $CMAKE_FLAGS ..
+-  make -j
++  make -j $MAKE_JOBS
+   cp -v $CPSOURCE $BINDIR/graphbolt
+ else
+   for PYTHON_INTERP in $@; do
+@@ -41,7 +50,7 @@ else
+     mkdir -p $TORCH_VER
+     cd $TORCH_VER
+     $CMAKE_COMMAND $CMAKE_FLAGS -DPYTHON_INTERP=$PYTHON_INTERP ../..
+-    make -j
++    make -j $MAKE_JOBS
+     cp -v $CPSOURCE $BINDIR/graphbolt
+     cd ..
+   done
