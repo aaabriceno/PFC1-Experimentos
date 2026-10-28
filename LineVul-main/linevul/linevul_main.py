@@ -118,9 +118,23 @@ def train(args, train_dataset, model, tokenizer, eval_dataset):
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size, num_workers=0)
     
-    args.max_steps = args.epochs * len(train_dataloader)
+    #args.max_steps = args.epochs * len(train_dataloader)
+    '''
+    Se está corrigiendo porque MAX_STEPS es el total de movimientos de pesos que planea el programa
+    y de ahi el calentamiento y el frenado de la tasa de aprendizaje. Dividir iguala el plan.
+    '''
+    args.max_steps = args.epochs * (len(train_dataloader) // args.gradient_accumulation_steps) 
+
+
     # evaluate the model per epoch
-    args.save_steps = len(train_dataloader)
+    #args.save_steps = len(train_dataloader)
+    '''
+    save_steps es cada cuantos movimientos se hace la validación y se guarda el mejor checkpoint
+    El contador que lo compara (global_step) cuenta movimientos de pesos, así que el número también
+    debe estar en movimientos. sin la división, la validación solo llegaría cada 4 épocas.
+    '''
+    args.save_steps = len(train_dataloader) // args.gradient_accumulation_steps
+    
     args.warmup_steps = args.max_steps // 5
     model.to(args.device)
 
