@@ -11,6 +11,7 @@
 !/AMPLE-main/
 !/patches/
 !/environment/
+!/protocolo_comparacion/
 
 # Dentro de LineVul-main/ y AMPLE-main/: nada pesado ni regenerable.
 # GitHub rechaza archivos de mas de 100 MB; esto es solo codigo, docs y logs.
