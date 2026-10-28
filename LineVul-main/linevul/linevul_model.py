@@ -3,11 +3,13 @@ import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from transformers import RobertaForSequenceClassification
 
-class RobertaClassificationHead(nn.Module):
+#Esta clase es un módulo en Pytorch que se usa para tareas de clasificar a nivel de oraciones, en este caso el modelo toma características del modelo 
+# y las convierte en una predicción de clasificación binaria (T o F)
+class RobertaClassificationHead(nn.Module): #ese nn.Module es la clase base para modulos en la libreria pytorch
     """Head for sentence-level classification tasks."""
-    def __init__(self, config):
-        super().__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+    def __init__(self, config): # ese config es un objeto que contiene configuraciones del modelo
+        super().__init__() # llamamos al constructor de la clase nn.Module
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size) #con esto creamos una especie de capa que toma vectores de entrada del tamaño de hidden_size y devuelve vectores de tamaño hidden_size
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.out_proj = nn.Linear(config.hidden_size, 2)
 
