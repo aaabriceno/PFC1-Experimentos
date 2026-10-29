@@ -10,7 +10,8 @@ class RobertaClassificationHead(nn.Module): #ese nn.Module es la clase base para
     def __init__(self, config): # ese config es un objeto que contiene configuraciones del modelo
         super().__init__() # llamamos al constructor de la clase nn.Module
         self.dense = nn.Linear(config.hidden_size, config.hidden_size) #con esto creamos una especie de capa que toma vectores de entrada del tamaño de hidden_size y devuelve vectores de tamaño hidden_size
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob) #es un valor de dropout que permite apagar neuromas al azar
+        # por ejemplo p = 0.1 (valor que se usa) y se apaga una cantidad de neuronas para que las demas aprendan y no memorizen
         self.out_proj = nn.Linear(config.hidden_size, 2)
 
     def forward(self, features, **kwargs):
