@@ -12,6 +12,11 @@ class RobertaClassificationHead(nn.Module): #ese nn.Module es la clase base para
         self.dense = nn.Linear(config.hidden_size, config.hidden_size) #con esto creamos una especie de capa que toma vectores de entrada del tamaño de hidden_size y devuelve vectores de tamaño hidden_size
         self.dropout = nn.Dropout(config.hidden_dropout_prob) #es un valor de dropout que permite apagar neuromas al azar
         # por ejemplo p = 0.1 (valor que se usa) y se apaga una cantidad de neuronas para que las demas aprendan y no memorizen
+        
+        # el out_proj es una capa que permite poder tomar los 768 valores de cada la ultima parte de los pasos osea antes de que termine todo se devuelve un vector de 768 valores
+        # cabe aclarar que esos 768 salen del valor de hidden_size,ese vector es tomado por out_proj que es como una especie de funcion que comprime esa informacion para convertirlo
+        # en dos valores digamoslo asi en este caso el nombre real es el tensor de salida que se obtuvo de poder psasarle un tensor de entrada de 768 valores a out_proj para que retorne
+        # un tensor de salida de 2 valores 
         self.out_proj = nn.Linear(config.hidden_size, 2)
 
     def forward(self, features, **kwargs):
