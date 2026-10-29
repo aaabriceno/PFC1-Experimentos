@@ -28,8 +28,7 @@ agregaron (propios): `Dockerfile`, `requirements-docker.txt`,
 El repositorio original no tiene archivo de licencia y GitHub no detecta
 ninguna. Sin licencia, por defecto todos los derechos pertenecen a los
 autores, y terceros no tienen permiso de copiar, modificar ni redistribuir el
-código. Por eso la copia incluida en este repositorio se mantiene **privada**,
-solo como evidencia académica del trabajo de reproducción. No se concede
+código. Solo como evidencia académica del trabajo de reproducción. No se concede
 ningún derecho sobre ese código. Si los autores lo solicitan, se retira.
 
 **Archivos originales modificados (7):** cambios de compatibilidad con
