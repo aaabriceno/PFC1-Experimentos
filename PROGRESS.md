@@ -178,7 +178,9 @@ Detalle completo, tablas y evidencia en
 - **Cómo:** `protocolo_comparacion/entrenar_linevul_ffmpeg_qemu.sh`, lanzado con
   `setsid nohup ... &`. Desde `microsoft/codebert-base`, 10 épocas, lote 4 con
   acumulación 4 (lote efectivo 16), lr 2e-5, semilla 123456, RTX 5060. Log:
-  `LineVul-main/entrenamiento_ffmpeg_qemu_2026-10-27_1959.log` (en UTC, +5 h).
+  `LineVul-main/entrenamiento_ffmpeg_qemu_2026-10-27_1959_resumen.log` (extracto sin la barra
+  de progreso, 27 KB; el original de 9.2 MB se conserva localmente, no se sube; el
+  encabezado del extracto trae su SHA-256; el log va en UTC, +5 h).
 - **Verificado en el log:** `Num examples = 21758`, `Total optimization steps =
   13600` (el fix #1 funciona en la corrida real).
 - **Tiempo (log):** 5 h 37 min; por época 31 min 13 s de entrenamiento más 2 min
@@ -204,10 +206,10 @@ Detalle completo, tablas y evidencia en
   citar hasta archivarlas; §13.7 de la documentación).
 - **Hecho al terminar:** `raw_preds.csv` renombrado a `raw_preds_ffmpeg_qemu.csv`
   (el programa siempre escribe con el primer nombre y lo pisaría).
-- **Archivos nuevos sin versionar:** el log y
-  `LineVul-main/evidenciasLineVul/evidenciaEntrenamiento-epoch0.png`. El
-  checkpoint (`*.bin`) y las predicciones (`*.csv`) están ignorados por git. No se
-  hizo commit.
+- **Archivos de la corrida:** el extracto del log y la captura
+  `LineVul-main/evidenciasLineVul/evidenciaEntrenamiento-epoch0.png` están en el
+  repositorio. El log original (9.2 MB), el checkpoint (`*.bin`) y las predicciones
+  (`*.csv`) no se suben.
 
 ### Registro de experimentos (para la sección IV del artículo)
 Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
@@ -216,7 +218,7 @@ Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
 |---|---|---|---|---|---|
 | EXP-01 | LineVul, réplica del paper con el checkpoint de los autores (solo inferencia) | Test de Big-Vul, 18,864 funciones | Exactitud 0.9909, precisión 0.9712, recall 0.8635, F1 0.9142 (paper: 0.91 / 0.97 / 0.86) | `LineVul-main/resultados_gpu_test.log` (2026-07-09); re-corrida del 2026-09-30 con captura `evidenciasLineVul/testPruebaLineVul.png` | Hecho |
 | EXP-02 | AMPLE, pruebas piloto del pipeline y de tiempos GPU/CPU | Subconjuntos de 59 a 368 funciones de test | F1 de 42 % a 55 %: **validan el pipeline, no son resultados de AMPLE** | `AMPLE-main/AMPLE_code/models/*/devign_FFmpeg.log`; detalle en la sección de AMPLE más abajo | Hecho (la corrida a escala Big-Vul se cortó, sin resultado) |
-| EXP-03 | LineVul entrenado desde CodeBERT | FFmpeg+QEMU, reparto 80/10/10 semilla 42 (21,758 / 2,719 / 2,721) | Exactitud 0.6354, precisión 0.5932, recall 0.6363, F1 0.614; mejor época la 4 | Log `entrenamiento_ffmpeg_qemu_2026-10-27_1959.log`; `raw_preds_ffmpeg_qemu.csv`; documentación §13.6 | Hecho |
+| EXP-03 | LineVul entrenado desde CodeBERT | FFmpeg+QEMU, reparto 80/10/10 semilla 42 (21,758 / 2,719 / 2,721) | Exactitud 0.6354, precisión 0.5932, recall 0.6363, F1 0.614; mejor época la 4 | Log `entrenamiento_ffmpeg_qemu_2026-10-27_1959_resumen.log` (extracto); `raw_preds_ffmpeg_qemu.csv`; documentación §13.6 | Hecho |
 | EXP-04 | Longitud en tokens, truncado a 510 y longitud como predictor; límite de 514 posiciones de CodeBERT | Test de Big-Vul y FFmpeg+QEMU | 48.5 % de funciones cortadas frente a 18.7 %; AUC solo con longitud 0.537 frente a 0.689; 512 tokens funciona y 513 falla | Documentación §13.7, **sin log archivado** | Hecho, falta archivar script y salida |
 | EXP-05 | Rendimiento de EXP-03 en funciones ≤510 tokens frente a >510 | Test de FFmpeg+QEMU | — | Saldría de `raw_preds_ffmpeg_qemu.csv` y la cuenta de tokens | Pendiente (barato, no requiere reentrenar) |
 | EXP-06 | AMPLE sobre el mismo reparto | FFmpeg+QEMU, mismos 27,198 `.c` ya convertidos | — | — | Pendiente: Joern, word2vec, grafos, entrenamiento; ESTIMACIÓN ~50 min de preparación y ~2 h de entrenamiento |

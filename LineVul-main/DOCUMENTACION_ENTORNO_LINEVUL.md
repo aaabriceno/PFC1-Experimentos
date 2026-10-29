@@ -560,7 +560,9 @@ como padre; el contenedor lo gestiona dockerd. No hay reanudación si se corta.
 
 ### 13.6. Resultados de la corrida (terminada el 2026-10-28)
 
-Evidencia: `entrenamiento_ffmpeg_qemu_2026-10-27_1959.log` (9.2 MB; el log del
+Evidencia: `entrenamiento_ffmpeg_qemu_2026-10-27_1959_resumen.log` (extracto de
+27 KB sin las actualizaciones de la barra de progreso; el original de 9.2 MB se
+conserva localmente y el encabezado del extracto trae su SHA-256; el log del
 contenedor va en UTC, 5 h adelantado), `linevul/results/raw_preds_ffmpeg_qemu.csv`
 y el checkpoint `linevul/saved_models_ffmpeg_qemu/checkpoint-best-f1/linevul_ffmpeg_qemu.bin`
 (997,357,647 bytes).
@@ -643,7 +645,7 @@ validación). Además, la acumulación de gradiente no es idéntica a un lote de
 directo, porque el código recorta el gradiente en cada micro-lote
 (`linevul_main.py` línea 185); no se midió su efecto.
 
-**Archivos generados:** el log; el checkpoint (ignorado por git, `*.bin`);
+**Archivos generados:** el log (en el repositorio solo su extracto); el checkpoint (ignorado por git, `*.bin`);
 `raw_preds_ffmpeg_qemu.csv` (el programa lo escribe como `results/raw_preds.csv`
 y se renombró el 2026-10-28; ignorado por git, `*.csv`); las curvas
 `linevul/eval_precision_recall_linevul_ffmpeg_qemu.bin.pdf` y
@@ -687,4 +689,3 @@ probar**.
   (≤510 tokens) y en las cortadas (>510), con `raw_preds_ffmpeg_qemu.csv` y la
   cuenta de tokens, para contrastar la hipótesis del corte.
 - Entrenar y probar AMPLE sobre este mismo reparto para tener la comparación.
-- Material de estudio del código: `GUIA_ESTUDIO_CODIGO_LINEVUL.md`.
