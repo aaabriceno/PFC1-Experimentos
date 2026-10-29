@@ -208,7 +208,6 @@ Detalle completo, tablas y evidencia en
   `LineVul-main/evidenciasLineVul/evidenciaEntrenamiento-epoch0.png`. El
   checkpoint (`*.bin`) y las predicciones (`*.csv`) están ignorados por git. No se
   hizo commit.
-- **Guía para estudiar el código:** `LineVul-main/GUIA_ESTUDIO_CODIGO_LINEVUL.md`.
 
 ### Registro de experimentos (para la sección IV del artículo)
 Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
