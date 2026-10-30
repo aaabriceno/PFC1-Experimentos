@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from transformers import RobertaForSequenceClassification
 
-#Esta clase es un módulo en Pytorch que se usa para tareas de clasificar a nivel de oraciones, en este caso el modelo toma características del modelo 
+# Esta clase se usa para tareas de clasificar a nivel de oraciones, en este caso el modelo toma características del modelo 
 # y las convierte en una predicción de clasificación binaria (T o F)
 class RobertaClassificationHead(nn.Module): #ese nn.Module es la clase base para modulos en la libreria pytorch
     """Head for sentence-level classification tasks."""
