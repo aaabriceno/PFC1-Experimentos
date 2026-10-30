@@ -27,13 +27,24 @@ class RobertaClassificationHead(nn.Module): #ese nn.Module es la clase base para
         x = self.dropout(x)
         x = self.out_proj(x)
         return x
-        
+
+# estamos heredando todo lo que tiene la clase RoBERTa y vamos a agregarle mas cosas, se parece a RoBERTa, pero con mas funciones extra, como si fuese una caja de herramientas
+# que junta lo que LineVul necesita        
 class Model(RobertaForSequenceClassification):   
     def __init__(self, encoder, config, tokenizer, args):
         super(Model, self).__init__(config=config)
+
+        # el modelo RoBERTa es el cerebro que llega a leer el texto o ventana donde se pone a la función
+        # se puede entender como un libro que tiene recetas para hacer acciones
         self.encoder = encoder
+
+        # el tokenizer llega a ser ese elemento que convierte letras a numeros, como si fuese un traductor
         self.tokenizer = tokenizer
+
+        # llama a la configuracion de la clase padre pero agregar sus propias cambios entonces a quien llama en si al final? a las clases del hijo
         self.classifier = RobertaClassificationHead(config)
+
+        # esto llega a ser las instrucciones del experimento: tamaño de batch, epochs , etc
         self.args = args
     
         
