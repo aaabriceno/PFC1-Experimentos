@@ -4,7 +4,8 @@ from torch.nn import CrossEntropyLoss
 from transformers import RobertaForSequenceClassification
 
 # Esta clase se usa para tareas de clasificar a nivel de oraciones, en este caso el modelo toma características del modelo 
-# y las convierte en una predicción de clasificación binaria (T o F)
+# y las convierte en una predicción de clasificación binaria (devuelve dos puntajes)
+# para que luego la decisión salga de la funcion softmax y del umbral establecido
 class RobertaClassificationHead(nn.Module): #ese nn.Module es la clase base para modulos en la libreria pytorch
     """Head for sentence-level classification tasks."""
     def __init__(self, config): # ese config es un objeto que contiene configuraciones del modelo
