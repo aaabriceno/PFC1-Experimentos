@@ -28,7 +28,7 @@ Para correrlo hacen falta 4 piezas, ninguna lista para usar directamente:
 
 El dataset base es Fan et al. 2020 (Big-Vul), el mismo que usa LineVul —
 descargado en formato crudo (`MSR_data_cleaned.csv`, 10.7GB) en
-`docker-labs/vulnerability-detection/shared_datasets/fan_et_al/`.
+`docker-labs/vulnerability-detection/conjuntos_de_datos/big_vul/`.
 
 ---
 
@@ -242,7 +242,7 @@ solo el entorno, el código/dataset/grafos se montan del host con `-v`.
 
 ## 5. Dataset: mismo origen que LineVul, formato distinto (resuelto el 23 sep 2026)
 
-`shared_datasets/fan_et_al/MSR_data_cleaned.csv` (10.7GB) es el dataset
+`conjuntos_de_datos/big_vul/MSR_data_cleaned.csv` (10.7GB) es el dataset
 crudo completo de Fan et al./Big-Vul, columnas `func_before`, `func_after`,
 `vul` (label) más metadata (CVE, CWE, etc). **Es el mismo dataset fuente
 que usa LineVul**, pero LineVul lo usa ya separado en
@@ -506,7 +506,7 @@ docker run --rm --user $(id -u):$(id -g) -v "$(pwd)":/vulndet -w /vulndet/AMPLE-
 Cronología real (7 ago 2026):
 
 1. Dataset Fan et al. descargado (`MSR_data_cleaned.csv`, 10.7GB) en
-   `shared_datasets/fan_et_al/`.
+   `conjuntos_de_datos/big_vul/`.
 2. `extract_subset.py` v1 escrito, subset de 500 extraído — **inválido**
    (0 ejemplos vulnerables, ver §6). Reescrito con reservoir sampling
    estratificado. Nuevo subset n=500: train 178/172 (vul/no-vul), valid
@@ -595,6 +595,35 @@ Cronología real (7 ago 2026):
     `Start training!`. No guarda checkpoints intermedios, así que hay que
     relanzarlo desde cero.
 
+11. **31 oct 2026 — FFmpeg+QEMU (mismo reparto que LineVul).** 27,198 `.c`
+    convertidos con `protocolo_comparacion/convertir_a_ample.py` (train 21,758,
+    valid 2,719, test 2,721; semilla 42). Pasos con los comandos de §12 cambiando
+    el dataset a `devign_dataset_ffmpeg_qemu`: Joern en paralelo con 24 workers,
+    27,198 de 27,198 en 25 min 33 s (log `joern_ffmpeg_qemu_2026-10-31_1945.log`);
+    word2vec propio sobre las 21,758 de train, ~1 min (sin log archivado); grafos con
+    `cpg_GS_parallel.py`, 28 workers, 37 min 33 s (log `grafos_ffmpeg_qemu_2026-10-31_2011.log`):
+
+    | Split | Funciones | Con grafo | Vulnerables: antes → después |
+    |---|---|---|---|
+    | train | 21,758 | 15,544 (71.4 %) | 45.59 % → 45.40 % |
+    | valid | 2,719 | 1,951 (71.8 %) | 45.61 % → 45.31 % |
+    | test | 2,721 | 1,908 (70.1 %) | 45.57 % → 45.02 % |
+
+    Aquí el filtro de 500 nodos descartó parejo entre clases (en Big-Vul, no).
+    Entrenamiento en GPU del host (entorno de §3.1): `python3 main.py --dataset
+    ffmpeg_qemu_gpu --input_dir ../devign_dataset_ffmpeg_qemu_input/ --batch_size 32`,
+    100 épocas, 916,463 parámetros; de `Start training!` (20:51:06) a `Finish
+    training!` (22:19:40) hay 88 min 34 s: la época 1 tardó ~5 min y las demás ~50 s.
+    Log copiado a `protocolo_comparacion/ample_ffmpeg_qemu_devign_FFmpeg.log`.
+    Mejor F1 de valid: 61.21 % (época 17), el checkpoint con el que se evaluó el test.
+    **Resultado (última línea `DevignModel ----Test----`, 1,908 funciones, 859
+    vulnerables):** exactitud 59.49 %, precisión 54.04 %, recall 66.94 %, **F1
+    59.80 %**. Sobreajuste visible: en la época 60, train 87.0 % de exactitud y
+    valid 61.8 %. Una sola corrida. La comparación con LineVul sobre las mismas
+    funciones, con sus cautelas, está en `PROGRESS.md` (sección "Entrenamiento de
+    AMPLE sobre FFmpeg+QEMU") y se reproduce con
+    `protocolo_comparacion/comparar_ample_linevul.py`.
+
 **Cómo leer el log de entrenamiento** (código original de `trainer.py`, no
 modificado por nosotros aparte de los `.cuda()` del fix 9):
 
@@ -616,6 +645,7 @@ modificado por nosotros aparte de los `.cuda()` del fix 9):
 
 ## 11. Pendiente
 
+- (31 oct: el entrenamiento a escala completa se hizo sobre FFmpeg+QEMU, ver §10 entrada 11; el de Big-Vul sigue pendiente.)
 - **Entrenar a escala completa en GPU** (9,233 / 1,433 / 14,772, ya
   preprocesado): es el bloqueador para tener un resultado real de AMPLE.
   Comando en §12. Tiempo: **no medido**; una extrapolación lineal desde el
