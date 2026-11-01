@@ -211,6 +211,64 @@ Detalle completo, tablas y evidencia en
   repositorio. El log original (9.2 MB), el checkpoint (`*.bin`) y las predicciones
   (`*.csv`) no se suben.
 
+### Entrenamiento de AMPLE sobre FFmpeg+QEMU: TERMINADO (2026-10-31 19:45 a 22:19, hora local)
+
+Mismo reparto que LineVul (semilla 42; 21,758 / 2,719 / 2,721), convertido con
+`convertir_a_ample.py` (27,198 `.c`). Pasos, tiempos y fuentes:
+
+| Paso | Resultado | Tiempo | Fuente |
+|---|---|---|---|
+| Joern en paralelo (24 workers, host) | 27,198 de 27,198 con `nodes.csv` y `edges.csv` | 25 min 33 s | `AMPLE-main/joern_ffmpeg_qemu_2026-10-31_1945.log` |
+| word2vec propio sobre el train (`-ep 5 -eb 100`) | 21,758 funciones | ~1 min (`time` del `docker run`; sin log archivado) | |
+| Grafos (`cpg_GS_parallel.py`, 28 workers) | ver tabla siguiente | 37 min 33 s | `AMPLE-main/grafos_ffmpeg_qemu_2026-10-31_2011.log` |
+| Entrenamiento en GPU (100 épocas, batch 32, 916,463 parámetros) | ver abajo | 88 min 34 s (20:51:06 a 22:19:40); época 1 ~5 min, las demás ~50 s | `protocolo_comparacion/ample_ffmpeg_qemu_devign_FFmpeg.log` (copia del log) |
+
+**Filtro de 500 nodos.** A diferencia de Big-Vul, descartó parejo entre clases
+(cuenta sobre `devign-<split>-file.json` contra `<split>_raw_code.json`):
+
+| Split | Funciones | Con grafo | Vulnerables: antes → después |
+|---|---|---|---|
+| train | 21,758 | 15,544 (71.4 %) | 45.59 % → 45.40 % |
+| valid | 2,719 | 1,951 (71.8 %) | 45.61 % → 45.31 % |
+| test | 2,721 | **1,908** (70.1 %) | 45.57 % → 45.02 % |
+
+**Resultado de AMPLE (test, 1,908 funciones; 859 vulnerables = 45.02 %).** Última
+línea `DevignModel ----Test----` del log, con el checkpoint de mejor F1 de valid
+(61.21 %, época 17): exactitud 59.49 %, precisión 54.04 %, recall 66.94 %, **F1
+59.80 %**. Las líneas `Test` de cada época son monitoreo parcial, no resultado.
+Sobreajuste: en la época 60 el train llegó a exactitud 87.0 % y F1 86.2 %, y la
+validación se quedó en 61.8 % y 60.3 %; el F1 de valid no superó 61.21 % después de
+la época 17.
+
+**Comparación en las mismas 1,908 funciones** (`protocolo_comparacion/comparar_ample_linevul.py`,
+salida en `protocolo_comparacion/resultados_comparacion_ffmpeg_qemu.txt`; la matriz
+de AMPLE se reconstruye de recall, precisión y clases del test y coincide con las
+cuatro métricas del log):
+
+| Modelo | TP / FP / FN / TN | Exactitud | Precisión | Recall | F1 | MCC |
+|---|---|---|---|---|---|---|
+| AMPLE | 575 / 489 / 284 / 560 | 0.5949 | 0.5404 | 0.6694 | 0.5980 | 0.204 |
+| LineVul | 571 / 355 / 288 / 694 | 0.6630 | 0.6166 | 0.6647 | 0.6398 | 0.325 |
+| "Siempre vulnerable" | | 0.4502 | 0.4502 | 1.0000 | 0.6209 | 0 |
+
+LineVul sobre las 813 funciones **sin** grafo: exactitud 0.5707, F1 0.5554 (MCC
+0.141); sobre las 2,721 completas, los valores de EXP-03.
+
+**Lectura prudente.**
+- En esta partición LineVul queda por encima de AMPLE en exactitud (+6.8 puntos),
+  precisión (+7.6) y F1 (+4.2); el recall es casi igual (AMPLE +0.5).
+- El F1 de AMPLE (0.598) queda **por debajo** del de decir siempre "vulnerable"
+  (0.621); el de LineVul (0.640) apenas lo supera. Con 45 % de vulnerables el F1 solo
+  engaña: usar exactitud, precisión y MCC junto con el F1.
+- Una sola corrida, sin repeticiones ni intervalos de confianza, y no se hizo
+  prueba estadística: no se declara una diferencia significativa.
+- AMPLE se entrenó con 15,544 de las 21,758 funciones del train (las demás no
+  tienen grafo) y se evalúa en 1,908; LineVul vio el train completo. Eso favorece a
+  LineVul y es parte de la comparación.
+- No reproduce la ventaja de AMPLE sobre LineVul que reporta el paper de AMPLE en
+  FFmpeg+Qemu (66.94 frente a 56.54 de F1); no es una refutación: reparto, tamaño
+  de train y pipeline distintos.
+
 ### Registro de experimentos (para la sección IV del artículo)
 Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
 
@@ -221,7 +279,7 @@ Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
 | EXP-03 | LineVul entrenado desde CodeBERT | FFmpeg+QEMU, reparto 80/10/10 semilla 42 (21,758 / 2,719 / 2,721) | Exactitud 0.6354, precisión 0.5932, recall 0.6363, F1 0.614; mejor época la 4 | Log `entrenamiento_ffmpeg_qemu_2026-10-27_1959_resumen.log` (extracto); `raw_preds_ffmpeg_qemu.csv`; documentación §13.6 | Hecho |
 | EXP-04 | Longitud en tokens, truncado a 510 y longitud como predictor; límite de 514 posiciones de CodeBERT | Test de Big-Vul y FFmpeg+QEMU | 48.5 % de funciones cortadas frente a 18.7 %; AUC solo con longitud 0.537 frente a 0.689; 512 tokens funciona y 513 falla | Documentación §13.7, **sin log archivado** | Hecho, falta archivar script y salida |
 | EXP-05 | Rendimiento de EXP-03 en funciones ≤510 tokens frente a >510 | Test de FFmpeg+QEMU | — | Saldría de `raw_preds_ffmpeg_qemu.csv` y la cuenta de tokens | Pendiente (barato, no requiere reentrenar) |
-| EXP-06 | AMPLE sobre el mismo reparto | FFmpeg+QEMU, mismos 27,198 `.c` ya convertidos | — | — | Pendiente: Joern, word2vec, grafos, entrenamiento; ESTIMACIÓN ~50 min de preparación y ~2 h de entrenamiento |
+| EXP-06 | AMPLE sobre el mismo reparto | FFmpeg+QEMU, 27,198 funciones; grafos de 15,544 / 1,951 / 1,908 | Test (1,908): exactitud 0.5949, precisión 0.5404, recall 0.6694, F1 0.5980; LineVul en las mismas: 0.6630 / 0.6166 / 0.6647 / 0.6398 | `protocolo_comparacion/ample_ffmpeg_qemu_devign_FFmpeg.log`; `resultados_comparacion_ffmpeg_qemu.txt`; logs de Joern y grafos en `AMPLE-main/` | Hecho (una sola corrida) |
 | EXP-07 | Comparación sobre Big-Vul con las particiones de LineVul para los dos modelos | Big-Vul, 188,636 funciones | — | — | Pendiente (ver "Decisión (2026-10-25)") |
 
 ## Estado por modelo (2026-09-30)
@@ -431,7 +489,8 @@ grafos (code gadgets).
 
 ## Pendiente inmediato
 
-(Actualizado 2026-10-28: la prioridad actual es la etapa FFmpeg+QEMU, EXP-05 y
+(Actualizado 2026-10-31: EXP-06 hecho, AMPLE entrenado sobre FFmpeg+QEMU; quedan EXP-05 y
+la etapa Big-Vul. Antes, 2026-10-28: la prioridad era la etapa FFmpeg+QEMU, EXP-05 y
 EXP-06 del registro de experimentos. Los puntos de abajo son de la etapa Big-Vul y
 se conservan como referencia.)
 
