@@ -688,4 +688,64 @@ probar**.
 - Medir el rendimiento de este checkpoint por separado en las funciones que caben
   (≤510 tokens) y en las cortadas (>510), con `raw_preds_ffmpeg_qemu.csv` y la
   cuenta de tokens, para contrastar la hipótesis del corte.
-- Entrenar y probar AMPLE sobre este mismo reparto para tener la comparación.
+- ~~Entrenar y probar AMPLE sobre este mismo reparto~~: hecho el 2026-10-31, ver 13.9.
+
+### 13.9. Cierre del 2026-10-31: comparación con AMPLE y hallazgos sobre el código
+
+**Comparación con AMPLE (mismo reparto).** AMPLE solo evalúa las funciones del test
+con grafo (1,908 de 2,721; filtro de 500 nodos de `cpg_GS.py`). Las métricas de este
+checkpoint recalculadas sobre esas mismas funciones salen de
+`raw_preds_ffmpeg_qemu.csv` con `protocolo_comparacion/comparar_ample_linevul.py`
+(salida archivada en `protocolo_comparacion/resultados_comparacion_ffmpeg_qemu.txt`):
+
+| Conjunto | Funciones | TP / FP / FN / TN | Exactitud | Precisión | Recall | F1 | MCC |
+|---|---|---|---|---|---|---|---|
+| Con grafo (las 1,908 de AMPLE) | 1,908 | 571 / 355 / 288 / 694 | 0.6630 | 0.6166 | 0.6647 | 0.6398 | 0.325 |
+| Sin grafo | 813 | 218 / 186 / 163 / 246 | 0.5707 | 0.5396 | 0.5722 | 0.5554 | 0.141 |
+| Test completo | 2,721 | 789 / 541 / 451 / 940 | 0.6354 | 0.5932 | 0.6363 | 0.6140 | 0.270 |
+
+AMPLE en las mismas 1,908: exactitud 0.5949, precisión 0.5404, recall 0.6694, F1
+0.5980 (detalle y cautelas en `PROGRESS.md`, sección "Entrenamiento de AMPLE sobre
+FFmpeg+QEMU"). Decir siempre "vulnerable" da F1 0.6209 en esas 1,908. En las funciones
+sin grafo LineVul rinde peor; probablemente son las más largas (el filtro es por nodos
+del grafo y no medí su longitud en tokens), pero eso no está comprobado.
+
+**Evaluar sin reentrenar.** El mismo comando de 13.5 sin `--do_train` carga
+`checkpoint-best-f1/linevul_ffmpeg_qemu.bin` y ejecuta solo `test`. Sin
+`--write_raw_preds` no toca `raw_preds`, pero sobrescribe el PDF de la curva
+precisión-recall del test. Se lanzó una vez el 2026-10-30; esa salida no se archivó.
+
+**Contenido del checkpoint (medido el 2026-10-30 con `torch.load` en el contenedor,
+sin script ni salida archivados).** 249,294,599 parámetros:
+
+| Prefijo | Parámetros | ¿Lo usa `forward`? |
+|---|---|---|
+| `encoder.roberta` | 124,055,554 | Sí (CodeBERT) |
+| `roberta` | 124,055,554 | **No** |
+| `classifier` | 592,130 | Sí (cabeza de LineVul, 2 salidas) |
+| `encoder.classifier` | 591,361 | No (cabeza de HuggingFace, 1 salida) |
+
+`Model` hereda de `RobertaForSequenceClassification` y su `super().__init__`
+crea un `roberta` y un `classifier` propios que `forward` nunca usa; por eso el
+checkpoint pesa ~951 MiB, casi el doble de lo necesario. LineVul define su propia
+cabeza porque `main` fija `config.num_labels = 1` (`linevul_main.py` línea 1234)
+y la de HuggingFace daría una sola salida. Cuenta por dimensiones (coincide con el
+checkpoint): cada capa del encoder tiene 7,087,872 parámetros (cuatro matrices de
+atención de 768×768, las dos del FFN 768↔3072 y LayerNorm); 12 capas suman
+85,054,464; los embeddings, 39,000,576; en total 124,055,040, más 514 del buffer de
+posiciones.
+
+**Diferencias entre el paper (Fu y Tantithamthavorn, MSR'22) y el código.**
+
+| Paper | Código |
+|---|---|
+| Embeddings de palabra y de posición "se concatenan" (§3.1, paso 2a) | `RobertaEmbeddings` los **suma** (más el de tipo de token), luego LayerNorm y dropout; verificado en el código de `transformers` 4.26.0 del contenedor |
+| "Una sola capa lineal", ŷ = Wᵀx + b (§3.1, paso 2c) | `RobertaClassificationHead`: dropout, `dense` 768→768, tanh, dropout, `out_proj` 768→2 |
+| Activación ReLU en los bloques | El valor por defecto de `RobertaConfig` es `gelu`; no verifiqué el `config.json` descargado de `codebert-base` |
+
+**Cuánto cambiaron los pesos al entrenar (medido el 2026-10-30 contra el estado
+inicial reconstruido con la semilla 123456; sin log archivado).** Cambio relativo
+medio: `out_proj` ~3.3 %, `dense` ~2.9 %, las 72 matrices del encoder ~2.1 %,
+`word_embeddings` ~0.3 %, sesgos de `out_proj` casi nulo. El aprendizaje no se
+concentra en la cabeza ni en el encoder. No citar en el artículo hasta archivar el
+script.
