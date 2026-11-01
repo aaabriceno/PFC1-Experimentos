@@ -1,5 +1,5 @@
 """
-Extrae funciones del CSV crudo Fan et al. (MSR_data_cleaned.csv) usando EL MISMO
+Extrae funciones del CSV crudo Fan et al. (MSR_data_cleaned.csv), en este caso el conjunto de datos es Bigvul usando EL MISMO
 split de test que ya uso LineVul (LineVul-main/data/big-vul_dataset/test.csv),
 para que la comparacion entre ambos modelos sea funcion-por-funcion y no solo
 "mismo dataset de origen".
@@ -40,7 +40,7 @@ csv.field_size_limit(sys.maxsize)
 # comando docker run exacto). Con --root se puede apuntar a otra raiz (ej. para
 # correr el script fuera de Docker apuntando al host directamente).
 ap_root_default = "/vulndet"
-SHARED_CSV_REL = "shared_datasets/fan_et_al/MSR_data_cleaned.csv"
+SHARED_CSV_REL = "conjuntos_de_datos/big_vul/MSR_data_cleaned.csv"
 LINEVUL_TEST_CSV_REL = "LineVul-main/data/big-vul_dataset/test.csv"
 
 

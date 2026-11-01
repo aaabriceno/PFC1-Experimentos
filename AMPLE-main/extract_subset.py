@@ -15,7 +15,7 @@ import sys
 csv.field_size_limit(sys.maxsize)
 
 SHARED_CSV = os.path.expanduser(
-    "~/Documentos/docker-labs/vulnerability-detection/shared_datasets/fan_et_al/MSR_data_cleaned.csv"
+    "~/Documentos/docker-labs/vulnerability-detection/conjuntos_de_datos/big_vul/MSR_data_cleaned.csv"
 )
 RAW_CODE_DIR = "devign_dataset/devign_raw_code"
 SPLIT_DIR = "devign_dataset/devign_data_split"
