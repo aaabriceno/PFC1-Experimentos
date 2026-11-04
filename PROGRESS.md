@@ -131,8 +131,8 @@ emparejadas por la columna `index`: `func_before` y etiqueta idénticas en las
 ya se entrenó con ese train y se eligió con ese val, así que **no se reentrena**;
 AMPLE se entrena con el mismo train/val y se prueba con el mismo test: ambos ven
 las mismas funciones (se resuelve el train desigual de ~150k frente a 13k).
-Matices a declarar: (a) AMPLE descarta grafos de más de 500 nodos (21.7 % del
-test en la corrida previa), así que se compara sobre la intersección usando las
+Matices a declarar: (a) AMPLE no genera grafo para todas las funciones (21.7 % del
+test en la corrida previa; la causa dominante es «sin AST», no el límite de 500 nodos: ver corrección del 2026-11-04), así que se compara sobre la intersección usando las
 predicciones por función de LineVul (`--write_raw_preds`); (b) hay que decidir y
 declarar qué texto recibe Joern (`func_before` del crudo, como hasta ahora, o
 `processed_func`, que es lo que lee LineVul).
@@ -223,8 +223,13 @@ Mismo reparto que LineVul (semilla 42; 21,758 / 2,719 / 2,721), convertido con
 | Grafos (`cpg_GS_parallel.py`, 28 workers) | ver tabla siguiente | 37 min 33 s | `AMPLE-main/grafos_ffmpeg_qemu_2026-10-31_2011.log` |
 | Entrenamiento en GPU (100 épocas, batch 32, 916,463 parámetros) | ver abajo | 88 min 34 s (20:51:06 a 22:19:40); época 1 ~5 min, las demás ~50 s | `protocolo_comparacion/ample_ffmpeg_qemu_devign_FFmpeg.log` (copia del log) |
 
-**Filtro de 500 nodos.** A diferencia de Big-Vul, descartó parejo entre clases
-(cuenta sobre `devign-<split>-file.json` contra `<split>_raw_code.json`):
+**Pérdida de grafos.** A diferencia de Big-Vul, fue pareja entre clases (cuenta sobre
+`devign-<split>-file.json` contra `<split>_raw_code.json`). **Corrección del 2026-11-04:**
+antes de hoy esta sección y la documentación de AMPLE la atribuían al filtro de 500 nodos;
+con `bad_file.json` se vio que la causa dominante es **«sin AST»** (una sentencia del flujo
+de control sin árbol sintáctico en Joern): 6,955 de las 7,795 funciones sin grafo (89 %); las
+840 restantes son grafo vacío, de más de 500 nodos u otros fallos (no se separó). En el test:
+741 de 813. Detalle y causas en `AMPLE-main/DOCUMENTACION_ENTORNO_AMPLE.md` §9.1.
 
 | Split | Funciones | Con grafo | Vulnerables: antes → después |
 |---|---|---|---|
@@ -269,6 +274,17 @@ LineVul sobre las 813 funciones **sin** grafo: exactitud 0.5707, F1 0.5554 (MCC
   FFmpeg+Qemu (66.94 frente a 56.54 de F1); no es una refutación: reparto, tamaño
   de train y pipeline distintos.
 
+**Medición de las simplificaciones TGS y VGS (2026-11-04)**, para el informe del avance 2.
+`protocolo_comparacion/medir_simplificacion_grafos.py` corre `graphGeneration` de las cuatro variantes del
+repositorio (`cpg_original`, `cpg_TGS`, `cpg_VGS`, `cpg_GS`) sobre una muestra de 600 funciones del test
+(semilla 42; salida en `resultados_simplificacion_grafos.json/.txt`). En las 395 funciones con grafo en
+las cuatro: nodos medios 133.8 (sin simplificar), 98.1 (TGS), 98.6 (VGS), 70.9 (ambas) = reducciones de
+26.7 %, 26.3 % y **47.0 %**. Funciones con grafo de 600: 395 / 412 / 416 / 426 (las simplificaciones
+rescatan funciones del límite de 500 nodos; las «sin AST» no cambian: 158 en las cuatro). Mide tamaño del
+grafo, no efecto en la clasificación (no se hizo ablación de entrenamiento). Las curvas del entrenamiento
+las genera `protocolo_comparacion/graficar_entrenamiento_ample.py`. Todo se usa en
+`PFC1/IEEE Conference Template/Avances-Implementacion/avance-2/`.
+
 ### Registro de experimentos (para la sección IV del artículo)
 Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
 
@@ -280,6 +296,7 @@ Cada resultado lleva su fuente. "Sin log archivado" = no citable aún.
 | EXP-04 | Longitud en tokens, truncado a 510 y longitud como predictor; límite de 514 posiciones de CodeBERT | Test de Big-Vul y FFmpeg+QEMU | 48.5 % de funciones cortadas frente a 18.7 %; AUC solo con longitud 0.537 frente a 0.689; 512 tokens funciona y 513 falla | Documentación §13.7, **sin log archivado** | Hecho, falta archivar script y salida |
 | EXP-05 | Rendimiento de EXP-03 en funciones ≤510 tokens frente a >510 | Test de FFmpeg+QEMU | — | Saldría de `raw_preds_ffmpeg_qemu.csv` y la cuenta de tokens | Pendiente (barato, no requiere reentrenar) |
 | EXP-06 | AMPLE sobre el mismo reparto | FFmpeg+QEMU, 27,198 funciones; grafos de 15,544 / 1,951 / 1,908 | Test (1,908): exactitud 0.5949, precisión 0.5404, recall 0.6694, F1 0.5980; LineVul en las mismas: 0.6630 / 0.6166 / 0.6647 / 0.6398 | `protocolo_comparacion/ample_ffmpeg_qemu_devign_FFmpeg.log`; `resultados_comparacion_ffmpeg_qemu.txt`; logs de Joern y grafos en `AMPLE-main/` | Hecho (una sola corrida) |
+| EXP-08 | Efecto de TGS y VGS en el tamaño del grafo | 600 funciones del test de FFmpeg+QEMU (395 con grafo en las 4 variantes) | Nodos medios 133.8 → 98.1 (TGS) / 98.6 (VGS) / 70.9 (ambas): −47.0 % | `protocolo_comparacion/resultados_simplificacion_grafos.json` y `.txt` | Hecho (muestra, una semilla) |
 | EXP-07 | Comparación sobre Big-Vul con las particiones de LineVul para los dos modelos | Big-Vul, 188,636 funciones | — | — | Pendiente (ver "Decisión (2026-10-25)") |
 
 ## Estado por modelo (2026-09-30)
@@ -381,10 +398,12 @@ Devign: es Fan et al./Big-Vul (`MSR_data_cleaned.csv`).
   estancamiento de ~14 min (ver "Problemas conocidos").
 
 #### Comparabilidad con LineVul: hallazgo importante, sin resolver
-`cpg_GS` descarta los grafos de más de 500 nodos (y los fallos de parseo). Eso
-descartó el 21.7 % del test: **AMPLE se evaluaría sobre 14,772 funciones, no
-sobre las 18,864 de LineVul**. Además el descarte NO es parejo entre clases;
-pierde más funciones vulnerables (las funciones largas pesan más):
+`cpg_GS` no genera grafo para todas las funciones. Eso dejó sin grafo al 21.7 % del test:
+**AMPLE se evaluaría sobre 14,772 funciones, no sobre las 18,864 de LineVul**. Además la pérdida
+NO es pareja entre clases; pierde más funciones vulnerables. (Corrección del 2026-11-04: antes se
+atribuía a los grafos de más de 500 nodos y a que las funciones largas pesan más; con `bad_file.json`,
+3,217 de las 4,092 funciones sin grafo del test son «sin AST»; las vulnerables son 9.17 % de
+las «sin AST» y 8.23 % del resto, frente a 5.59 % del test. Ver doc de AMPLE §9.1.)
 
 | Split | Vulnerables: original → con grafo | No vulnerables: retención |
 |---|---|---|
@@ -394,8 +413,7 @@ pierde más funciones vulnerables (las funciones largas pesan más):
 
 Fuente: `devign_cpg_full/devign-{split}-file.json` contra
 `devign_data_split/{split}_raw_code.json` (los nombres de archivo terminan en
-`_<label>.c`). No se separó cuántos descartes son por nodos > 500 y cuántos por
-fallo de parseo.
+`_<label>.c`). El desglose por causa está en el doc de AMPLE §9.1 (nota del 2026-11-04).
 
 Consecuencias para el informe:
 - El test de AMPLE queda sesgado hacia funciones más chicas y con menos
