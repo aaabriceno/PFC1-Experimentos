@@ -258,10 +258,10 @@ fila con `index=73752` de `test.csv` tiene el mismo `func_before` y la misma
 etiqueta que la fila 73752 de `MSR_data_cleaned.csv`. Se recuperaron 18,864
 de 18,864.
 
-**Limitación nueva**: el filtro de `cpg_GS` (§9.1) descarta los grafos de más
-de 500 nodos, así que AMPLE no se evalúa sobre las 18,864 funciones sino sobre
-14,772, y el descarte no es parejo entre clases. Detalle en §10 (entrada del
-29 sep). Hasta decidir cómo tratarlo, el resultado de AMPLE no es
+**Limitación nueva**: `cpg_GS` (§9.1) no genera grafo para todas las funciones
+(sin árbol sintáctico en alguna sentencia, o grafo vacío o de más de 500 nodos), así
+que AMPLE no se evalúa sobre las 18,864 funciones sino sobre 14,772, y la pérdida no
+es pareja entre clases. Detalle en §10 (entrada del 29 sep y nota del 4 nov). Hasta decidir cómo tratarlo, el resultado de AMPLE no es
 directamente comparable con el de LineVul.
 
 ---
@@ -470,10 +470,37 @@ Cada proceso carga el modelo word2vec una sola vez (`initializer`). Motivo:
 `cpg_GS.py` secuencial tarda ~1 s por archivo (220 archivos en 3 min 40 s,
 sin log archivado), y con 32 cores era el cuello de botella.
 
-**Qué se descarta.** `graphGeneration` (`cpg_GS.py`, línea 545) devuelve
-`None` si el grafo tiene 0 nodos o **más de 500 nodos**, y esos archivos no
-entran al JSON de salida. Es lo que hace que cada split quede con menos
-funciones que las extraídas (§10, entrada del 29 sep).
+**Qué se descarta.** `graphGeneration` (`cpg_GS.py`) descarta la función por dos
+vías, y esos archivos no entran al JSON de salida (es lo que hace que cada split quede
+con menos funciones que las extraídas, §10 entrada del 29 sep):
+
+1. **Sin AST** (devuelve `None, None, None, True`; `main` y `cpg_GS_parallel.py` los
+   anotan en `bad_file.json`): una sentencia del flujo de control no tiene árbol
+   sintáctico y no es un `break`, `continue`, `return;`, `case` ni `for(;;)` simple.
+2. **Grafo vacío o de más de 500 nodos** (línea 545).
+
+*Nota del 4 nov 2026: antes de esta nota este documento atribuía todos los descartes al
+filtro de 500 nodos; era incorrecto.* Con `bad_file.json` y los `*-file.json` de salida, la
+vía 1 es la dominante (la vía 2 se calcula por diferencia, así que incluye cualquier otro
+fallo; no se separó):
+
+| Corrida / split | Funciones | Sin grafo | Sin AST (vía 1) | Resto (vía 2 y otros) |
+|---|---|---|---|---|
+| FFmpeg+QEMU train | 21,758 | 6,214 | 5,534 | 680 |
+| FFmpeg+QEMU valid | 2,719 | 768 | 680 | 88 |
+| FFmpeg+QEMU test | 2,721 | 813 | 741 | 72 |
+| Big-Vul (subset, §10.10) train | 13,000 | 3,767 | 2,973 | 794 |
+| Big-Vul (subset) valid | 2,000 | 567 | 458 | 109 |
+| Big-Vul (subset) test | 18,864 | 4,092 | 3,217 | 875 |
+
+En el test de FFmpeg+QEMU, la primera sentencia sin árbol es un nodo genérico
+`Statement` en 719 de 741 casos (17 `ExpressionStatement`, 3 `ClassDefStatement`, 2
+`CFGErrorNode`). Revisadas a mano 14 funciones al azar: macros que el parser difuso de
+Joern no descompone (`QLIST_FOREACH`, `TAILQ_FOREACH`, `TRACE`, cadenas pegadas a
+`PRId64`, `case MKTAG(...)`, inicializadores designados). El literal `8LL` parte la sentencia
+(`bitrate = avio_rl32(pb) * 8LL;` queda como nodos sueltos `bitrate`, `=`, ..., `8L`): aparece
+en 8.4 % de las funciones sin AST del test y en 0.1 % de las que tienen grafo, pero solo
+explica 62 de las 741; **el resto de causas no está identificado**.
 
 **Verificación.** Sobre el subset de timing (76/17/73) da los mismos conteos
 que la versión secuencial: 76 grafos de train, 73 de test y 17 de valid.
@@ -571,8 +598,11 @@ Cronología real (7 ago 2026):
     | test | 18,864 | 14,772 | 78.3 % | 4 min 43 s |
     | valid | 2,000 | 1,433 | 71.7 % | 2 min 57 s |
 
-    **El filtro de 500 nodos (§9.1) no descarta parejo entre clases:** pierde
-    más funciones vulnerables, porque las funciones largas pesan más.
+    **La pérdida de grafos (§9.1) no es pareja entre clases:** pierde más funciones
+    vulnerables. (Antes se atribuyó al filtro de 500 nodos y a que las funciones largas pesan
+    más; no está probado: ~79 % de las funciones sin grafo son «sin AST», §9.1. En el test,
+    las vulnerables son 5.59 % del total, 4.66 % de las que tienen grafo, 9.17 % de las «sin
+    AST» y 8.23 % del resto.)
 
     | Split | Vulnerables: original → con grafo | Se conservan | No vulnerables que se conservan |
     |---|---|---|---|
@@ -582,8 +612,7 @@ Cronología real (7 ago 2026):
 
     Fuente: `devign_cpg_full/devign-<split>-file.json` contra
     `devign_data_split/<split>_raw_code.json` (los nombres terminan en
-    `_<label>.c`). No se separó cuántos descartes son por más de 500 nodos y
-    cuántos por otros motivos. Consecuencia: **el test de AMPLE queda en
+    `_<label>.c`). El desglose por causa está en §9.1 (nota del 4 nov). Consecuencia: **el test de AMPLE queda en
     14,772 funciones, no en las 18,864 de LineVul**, sesgado hacia funciones
     más chicas y con menos vulnerables. Sus métricas no son directamente
     comparables con las de LineVul hasta decidir cómo tratarlo (§11).
@@ -609,7 +638,8 @@ Cronología real (7 ago 2026):
     | valid | 2,719 | 1,951 (71.8 %) | 45.61 % → 45.31 % |
     | test | 2,721 | 1,908 (70.1 %) | 45.57 % → 45.02 % |
 
-    Aquí el filtro de 500 nodos descartó parejo entre clases (en Big-Vul, no).
+    Aquí la pérdida de grafos fue pareja entre clases (en Big-Vul, no); el 89 % de las 7,795
+    funciones sin grafo son «sin AST», no de más de 500 nodos (§9.1, nota del 4 nov).
     Entrenamiento en GPU del host (entorno de §3.1): `python3 main.py --dataset
     ffmpeg_qemu_gpu --input_dir ../devign_dataset_ffmpeg_qemu_input/ --batch_size 32`,
     100 épocas, 916,463 parámetros; de `Start training!` (20:51:06) a `Finish
