@@ -1,0 +1,87 @@
+{
+ "muestra": 600,
+ "semilla": 42,
+ "variantes": {
+  "original": {
+   "estados": {
+    "ok": 395,
+    "sin_ast": 158,
+    "vacio_o_mas_de_500_nodos": 47
+   },
+   "nodos": {
+    "media": 133.8,
+    "mediana": 102,
+    "max": 464
+   },
+   "aristas_sin_autolazo": {
+    "media": 216.9,
+    "mediana": 162,
+    "max": 816
+   },
+   "nodos_total": 52852,
+   "reduccion_nodos_pct": 0.0
+  },
+  "TGS": {
+   "estados": {
+    "ok": 412,
+    "sin_ast": 158,
+    "vacio_o_mas_de_500_nodos": 30
+   },
+   "nodos": {
+    "media": 98.1,
+    "mediana": 75,
+    "max": 340
+   },
+   "aristas_sin_autolazo": {
+    "media": 181.0,
+    "mediana": 134,
+    "max": 710
+   },
+   "nodos_total": 38732,
+   "reduccion_nodos_pct": 26.7
+  },
+  "VGS": {
+   "estados": {
+    "ok": 416,
+    "sin_ast": 158,
+    "vacio_o_mas_de_500_nodos": 26
+   },
+   "nodos": {
+    "media": 98.6,
+    "mediana": 79,
+    "max": 317
+   },
+   "aristas_sin_autolazo": {
+    "media": 189.4,
+    "mediana": 144,
+    "max": 709
+   },
+   "nodos_total": 38936,
+   "reduccion_nodos_pct": 26.3
+  },
+  "TGS+VGS": {
+   "estados": {
+    "ok": 426,
+    "sin_ast": 158,
+    "vacio_o_mas_de_500_nodos": 16
+   },
+   "nodos": {
+    "media": 70.9,
+    "mediana": 56,
+    "max": 237
+   },
+   "aristas_sin_autolazo": {
+    "media": 154.8,
+    "mediana": 114,
+    "max": 607
+   },
+   "nodos_total": 27987,
+   "reduccion_nodos_pct": 47.0
+  }
+ },
+ "funciones_con_grafo_en_las_4": 395
+}
+
+real	1m56,740s
+user	0m0,009s
+sys	0m0,016s
