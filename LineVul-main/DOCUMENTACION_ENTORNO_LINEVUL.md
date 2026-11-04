@@ -693,7 +693,7 @@ probar**.
 ### 13.9. Cierre del 2026-10-31: comparación con AMPLE y hallazgos sobre el código
 
 **Comparación con AMPLE (mismo reparto).** AMPLE solo evalúa las funciones del test
-con grafo (1,908 de 2,721; filtro de 500 nodos de `cpg_GS.py`). Las métricas de este
+con grafo (1,908 de 2,721; 741 de las 813 restantes no tienen árbol sintáctico en Joern, no por el filtro de 500 nodos; ver doc de AMPLE §9.1). Las métricas de este
 checkpoint recalculadas sobre esas mismas funciones salen de
 `raw_preds_ffmpeg_qemu.csv` con `protocolo_comparacion/comparar_ample_linevul.py`
 (salida archivada en `protocolo_comparacion/resultados_comparacion_ffmpeg_qemu.txt`):
